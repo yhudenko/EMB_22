@@ -1,0 +1,20 @@
+#pragma once
+#include "driver/gpio.h"
+
+#define LED_RED    GPIO_NUM_4
+#define LED_YELLOW GPIO_NUM_5
+#define LED_GREEN  GPIO_NUM_6
+
+#define RED_PHASE_DURATION_SEC 45
+#define RED_YELLOW_PHASE_DURATION_SEC 2
+#define YELLOW_PHASE_DURATION_SEC 3
+#define GREEN_BLINK_DURATION_SEC 3
+#define GREEN_PHASE_DURATION_SEC (32  + GREEN_BLINK_DURATION_SEC)
+
+typedef enum {
+    PHASE_RED,
+    PHASE_RED_YELLOW,
+    PHASE_GREEN,
+    PHASE_GREEN_BLINK,
+    PHASE_YELLOW
+} traffic_phase_t;

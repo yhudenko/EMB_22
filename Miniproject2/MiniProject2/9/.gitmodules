@@ -1,0 +1,3 @@
+[submodule "submodules/eaf"]
+	path = submodules/eaf
+	url = https://github.com/denyadanilov/EAF.git
