@@ -10,8 +10,15 @@ static const gpio_num_t BUTTON_PIN = GPIO_NUM_4;   // button to GND, uses pull-u
 // ---------------------------------------------------------------------------
 // FreeRTOS handles (created in setup, used by the tasks)
 // ---------------------------------------------------------------------------
-static SemaphoreHandle_t serialMutex    = nullptr;  // protects Serial (shared)
+static SemaphoreHandle_t Serial0Mutex    = nullptr;  // protects Serial0 (shared)
 static SemaphoreHandle_t buttonSemaphore = nullptr;  // signalled on a press
+
+// Task handles, kept so the stats task can query each task's stack usage.
+static TaskHandle_t hBlink   = nullptr;
+static TaskHandle_t hButton  = nullptr;
+static TaskHandle_t hBtnPoll = nullptr;
+static TaskHandle_t hCntA    = nullptr;
+static TaskHandle_t hCntB    = nullptr;
 
 // Debouncer for the push button (Bounce2 library).
 static Bounce button = Bounce();
@@ -20,17 +27,17 @@ static Bounce button = Bounce();
 static volatile uint32_t sharedCounter = 0;
 
 // ---------------------------------------------------------------------------
-// Helper: thread-safe Serial print.
-// Serial is a shared resource; without the mutex two tasks printing at the same
+// Helper: thread-safe Serial0 print.
+// Serial0 is a shared resource; without the mutex two tasks printing at the same
 // time would interleave their characters. We take the mutex, print, give back.
 // ---------------------------------------------------------------------------
 static void safePrint(const char *msg)
 {
     // Block up to 100 ms waiting for the mutex to become free.
-    if (xSemaphoreTake(serialMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+    if (xSemaphoreTake(Serial0Mutex, pdMS_TO_TICKS(100)) == pdTRUE)
     {
-        Serial.println(msg);
-        xSemaphoreGive(serialMutex);   // always release what you take
+        Serial0.println(msg);
+        xSemaphoreGive(Serial0Mutex);   // always release what you take
     }
 }
 
@@ -89,13 +96,13 @@ static void counterTask(void *param)
     for (;;)
     {
         // Critical section protected by the mutex.
-        if (xSemaphoreTake(serialMutex, portMAX_DELAY) == pdTRUE)
+        if (xSemaphoreTake(Serial0Mutex, portMAX_DELAY) == pdTRUE)
         {
             uint32_t value = ++sharedCounter;
             snprintf(buffer, sizeof(buffer), "[%s] counter = %lu",
                      name, static_cast<unsigned long>(value));
-            Serial.println(buffer);
-            xSemaphoreGive(serialMutex);
+            Serial0.println(buffer);
+            xSemaphoreGive(Serial0Mutex);
         }
 
         // Different cadence per task so you can see them interleave.
@@ -119,22 +126,55 @@ static void buttonTask(void *param)
 }
 
 // ---------------------------------------------------------------------------
+// Diagnostic task
+// ---------------------------------------------------------------------------
+static void statsTask(void *param)
+{
+    for (;;)
+    {
+        if (xSemaphoreTake(Serial0Mutex, portMAX_DELAY) == pdTRUE)
+        {
+            // uxTaskGetStackHighWaterMark returns the MINIMUM free stack ever recorded for
+            // a task, measured in WORDS (1 word = 4 bytes on ESP32). A value close to 0
+            // means that task is about to overflow its stack and needs a bigger one.
+            Serial0.printf(
+                "[stats] free stack (words): blink=%u button=%u btnPoll=%u "
+                "cntA=%u cntB=%u\n",
+                (unsigned)uxTaskGetStackHighWaterMark(hBlink),
+                (unsigned)uxTaskGetStackHighWaterMark(hButton),
+                (unsigned)uxTaskGetStackHighWaterMark(hBtnPoll),
+                (unsigned)uxTaskGetStackHighWaterMark(hCntA),
+                (unsigned)uxTaskGetStackHighWaterMark(hCntB));
+
+            // Heap usage: task stacks/TCBs are allocated from the heap, so watch
+            // the free heap too. "min ever" is the lowest it has ever dropped to
+            // (worst case); if it trends toward 0 you are running out of RAM.
+            Serial0.printf("[stats] free heap: %u bytes, min ever: %u\n",
+                (unsigned)esp_get_free_heap_size(),
+                (unsigned)esp_get_minimum_free_heap_size());
+            xSemaphoreGive(Serial0Mutex);
+        }
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
+// ---------------------------------------------------------------------------
 // setup(): create the RTOS objects and the tasks, then return.
 // The scheduler keeps running the tasks after setup()/loop() exist.
 // ---------------------------------------------------------------------------
 void setup()
 {
-    Serial.begin(115200);
+    Serial0.begin(115200);
     delay(300);                       // small startup settle time
-    Serial.println("\nFreeRTOS demo starting...");
+    Serial0.println("FreeRTOS demo starting...");
 
     // --- Create synchronization primitives ---------------------------------
-    serialMutex    = xSemaphoreCreateMutex();   // mutex for the shared Serial
+    Serial0Mutex    = xSemaphoreCreateMutex();   // mutex for the shared Serial0
     buttonSemaphore = xSemaphoreCreateBinary();  // binary semaphore for the ISR
 
-    if (serialMutex == nullptr || buttonSemaphore == nullptr)
+    if (Serial0Mutex == nullptr || buttonSemaphore == nullptr)
     {
-        Serial.println("Failed to create RTOS objects!");
+        Serial0.println("Failed to create RTOS objects!");
         return;
     }
 
@@ -144,14 +184,17 @@ void setup()
 
     // --- Create tasks -------------------------------------------------------
     // xTaskCreate( fn, name, stackBytes, param, priority, handle )
-    xTaskCreate(blinkTask,      "blink",  2048, nullptr, 1, nullptr);
-    xTaskCreate(buttonTask,     "button", 2048, nullptr, 3, nullptr);
-    xTaskCreate(buttonPollTask, "btnPoll",2048, nullptr, 3, nullptr);
+    xTaskCreate(blinkTask,      "blink",  2048, nullptr, 1, &hBlink);
+    xTaskCreate(buttonTask,     "button", 2048, nullptr, 3, &hButton);
+    xTaskCreate(buttonPollTask, "btnPoll",2048, nullptr, 3, &hBtnPoll);
 
     // Two counter tasks sharing the same function but different names.
     // Pinned to specific cores to show xTaskCreatePinnedToCore (ESP32 has 2 cores).
-    xTaskCreatePinnedToCore(counterTask, "cntA", 2048, (void *)"A", 2, nullptr, 0);
-    xTaskCreatePinnedToCore(counterTask, "cntB", 2048, (void *)"B", 2, nullptr, 1);
+    xTaskCreatePinnedToCore(counterTask, "cntA", 2048, (void *)"A", 2, &hCntA, 0);
+    xTaskCreatePinnedToCore(counterTask, "cntB", 2048, (void *)"B", 2, &hCntB, 1);
+
+    // Diagnostic task: prints stack usage of all tasks every 5 s.
+    xTaskCreate(statsTask, "stats", 2560, nullptr, 1, nullptr);
 
     safePrint("Setup complete. Tasks are running.");
 }
