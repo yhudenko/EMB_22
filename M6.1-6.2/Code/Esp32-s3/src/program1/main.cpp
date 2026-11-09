@@ -81,7 +81,7 @@ static void blinkTask(void *param)
         //vTaskDelay(pdMS_TO_TICKS(500));
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
-}
+}xTaskNotifyGiveIndexed()
 
 // ---------------------------------------------------------------------------
 // Task 2 & 3: both increment the shared counter under the mutex.
