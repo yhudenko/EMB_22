@@ -41,7 +41,7 @@ private:
     const uint8_t swPin;
     const RotaryEncoder::LatchMode latchMode;
     uint32_t storedPin;
-    RotaryEncoder* encoder;
+    RotaryEncoder encoder;
     uint8_t* input;
     uint8_t digitCount;
     uint8_t enteredDigits;

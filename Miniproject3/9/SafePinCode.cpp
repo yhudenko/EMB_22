@@ -11,18 +11,20 @@ static_assert(ACTIVE_DIGIT_BLINK_MS > 0, "Blink interval must be nonzero");
 SafePinCode::SafePinCode(SegmentDisplay& screen, uint8_t clk, uint8_t dt, uint8_t sw,
                          RotaryEncoder::LatchMode mode)
     : display(screen), clkPin(clk), dtPin(dt), swPin(sw), latchMode(mode),
-      storedPin(0), encoder(nullptr), input(nullptr), digitCount(0),
+      storedPin(0), input(nullptr), digitCount(0),
       enteredDigits(0), selectedDigit(0), initialized(false), inputInProgress(false),
       pinCorrect(false), pinEntered(false), pinConfigured(false), pinSet(false),
       rawButton(HIGH), stableButton(HIGH),
       buttonArmed(false), buttonChangedAt(0), digitVisible(true), blinkChangedAt(0)
 {
+    encoder = RotaryEncoder(clkPin, dtPin, latchMode)
 }
 
 SafePinCode::~SafePinCode()
 {
     delete encoder;
     delete[] input;
+    input = nullptr;
 }
 
 bool SafePinCode::pinFits(uint32_t value) const
