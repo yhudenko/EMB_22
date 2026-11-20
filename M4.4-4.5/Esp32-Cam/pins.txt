@@ -1,0 +1,7 @@
+﻿ESP32-CAM (AI-Thinker), see pinout.png
+
+Power: 5V, 3.3V, VCC, GND.
+UART0: GPIO1 (TX), GPIO3 (RX). UART2: GPIO16 (RX).
+Strapping: GPIO0 (low = flash mode), GPIO2, GPIO12, GPIO15.
+SD card: GPIO2 (D0), GPIO4 (D1, flash LED), GPIO12 (D2), GPIO13 (D3), GPIO14 (CLK), GPIO15 (CMD).
+GPIO 6-11 are used by flash: do not use.
