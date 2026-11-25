@@ -29,7 +29,7 @@
 | 5 | LCD_CAM |
 | 6 | AES |
 | 7 | SHA |
-| 8 | ADC |
+| 8 | ADC (program5, continuous mode) |
 | 9 | RMT |
 
 Без DMA: I2C, LEDC, TWAI, UART напряму (для UART з DMA використовується UHCI0).

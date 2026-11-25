@@ -89,10 +89,10 @@ static bool sendRecord(uint8_t seq, const uint8_t* payload, size_t len)
                 continue;  // slave ще зайнятий: MISO "порожній"
             }
             if (st.lastSeq == seq && st.status == ST_OK) {
-                Serial0.printf("seq=%u OK  total=%lu bytes  badFrames=%u (try %d)\n", seq, (unsigned long)st.totalBytes, st.badFrames, attempt);
+                Serial.printf("seq=%u OK  total=%lu bytes  badFrames=%u (try %d)\n", seq, (unsigned long)st.totalBytes, st.badFrames, attempt);
                 return true;
             }
-            Serial0.printf("seq=%u status: lastSeq=%u st=%u\n", seq, st.lastSeq, st.status);
+            Serial.printf("seq=%u status: lastSeq=%u st=%u\n", seq, st.lastSeq, st.status);
             break;  // валідна, але не підтверджує наш кадр -> повтор DATA
         }
     }
@@ -101,12 +101,12 @@ static bool sendRecord(uint8_t seq, const uint8_t* payload, size_t len)
 
 void setup()
 {
-    Serial0.begin(115200);
+    Serial.begin(115200);
     pinMode(PIN_CS, OUTPUT);
     digitalWrite(PIN_CS, HIGH);
     SPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, -1);  // CS керуємо вручну
     delay(2000);                                 // дати STM32 час стартувати
-    Serial0.println("ESP32 SPI master ready");
+    Serial.println("ESP32 SPI master ready");
 }
 
 void loop()
@@ -117,7 +117,7 @@ void loop()
     int n = snprintf(line, sizeof(line), "%lu,%u,%.2f\n", millis(), seq, temperatureRead());
 
     if (!sendRecord(seq, (const uint8_t*)line, n)) {
-        Serial0.printf("seq=%u FAILED after retries\n", seq);
+        Serial.printf("seq=%u FAILED after retries\n", seq);
     }
     seq++;  // uint8_t: природно обертається 255 -> 0
     delay(1000);

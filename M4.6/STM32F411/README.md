@@ -51,7 +51,7 @@ flowchart LR
 
 | Канал \ Потік | S0 | S1 | S2 | S3 | S4 | S5 | S6 | S7 |
 |---|---|---|---|---|---|---|---|---|
-| Ch0 | ADC1 | - | - | - | ADC1 | - | TIM1_CH1, TIM1_CH2, TIM1_CH3 | - |
+| Ch0 | **ADC1 (p5)** | - | - | - | ADC1 | - | TIM1_CH1, TIM1_CH2, TIM1_CH3 | - |
 | Ch1 | - | - | - | - | - | - | - | - |
 | Ch2 | - | - | - | SPI5_RX | SPI5_TX | - | - | - |
 | Ch3 | SPI1_RX | - | **SPI1_RX (p4)** | **SPI1_TX (p4)** | - | SPI1_TX | - | - |
@@ -73,3 +73,5 @@ flowchart LR
 | program2 | USART2 TX / RX (loopback PA2-PA3) | DMA1 S6 Ch4 / DMA1 S5 Ch4 |
 | program3 | I2C1 RX (BME280) | DMA1 S0 Ch1 |
 | program4 | SPI1 RX / TX (BME280) | DMA2 S2 Ch3 / DMA2 S3 Ch3 |
+| program5 | ADC1 scan, 5 каналів, circular | DMA2 S0 Ch0 |
+| program6 | регістри напряму (GPIO, ID, DWT) + пам'ять -> пам'ять без HAL | DMA2 S1 (Ch0) |
